@@ -42,8 +42,8 @@ public class KicadNetParser {
 		String dirPath = FilenameUtils.getFullPath(fileToReadName);
 		String baseName = FilenameUtils.getBaseName(fileToReadName);
 		String mcuComponentReference = args[1];//"U5";
-		String gloriaFieldPinDefinitionFileName = dirPath + baseName + ".h " ;///Users/arifainchtein/Data/DigitalStables/mcu/kicad_designs/gloria_field_kicad/GloriaPinDefintion.h";
-		String componentTypeReportFileName = dirPath + "ComponentReport.csv " ;//"/Users/arifainchtein/Data/DigitalStables/mcu/kicad_designs/gloria_field_kicad/ComponentReport.csv";
+		String gloriaFieldPinDefinitionFileName = dirPath + baseName + ".h" ;///Users/arifainchtein/Data/DigitalStables/mcu/kicad_designs/gloria_field_kicad/GloriaPinDefintion.h";
+		String componentTypeReportFileName = dirPath + "ComponentReport.csv" ;//"/Users/arifainchtein/Data/DigitalStables/mcu/kicad_designs/gloria_field_kicad/ComponentReport.csv";
 	
 	
 		KicadComponent kicadComponent= new KicadComponent();
@@ -59,6 +59,8 @@ public class KicadNetParser {
         	int pinNumber;
             String line, labelName="";
             boolean inNetArea=false;
+            boolean insideMainMCUComp=false;
+            
             
             boolean insideSpecificNet=false;
             boolean insideComponentDescription=false;
@@ -136,13 +138,16 @@ public class KicadNetParser {
             		}
             		
             		
-            		if(line.equals("(comp (ref "+mcuComponentReference +")")) {
-	            		if(line.startsWith("(value ")) {
-	            			
-	            			modelName = line.split(" ")[1].replace(")","");
-	            			//System.out.println("model:" + modelName);
-	            		}
+            		if(line.contains("(comp (ref "+mcuComponentReference)) {
+            			insideMainMCUComp=true;
 	            	}
+            		if(insideMainMCUComp) {
+            			if(line.startsWith("(value ")) {
+            				modelName = line.split(" ")[1].replace(")","");
+            				System.out.println("model:" + modelName);
+            				insideMainMCUComp=false;
+            			}
+            		}
             	}
             	
             	
@@ -160,10 +165,11 @@ public class KicadNetParser {
                 		}else if(insideSpecificNet) {
                 			if(line.contains("(ref "+ mcuComponentReference)) {
                 				int pinPos = line.indexOf("(pin");
+                				
                 				String potLine = line.substring(pinPos+5, line.length()).replace("))", "");
                 				if(potLine.contains(")"))potLine = potLine.replace(")", "");
                 				 pinNumber = Integer.parseInt(potLine);
-                				
+                				// System.out.println("line contains mcuref labelName "+  labelName +  " pinNumber=" + pinNumber );
                 				
                 				pinIndex.add(new AbstractMap.SimpleEntry<String, Integer>(labelName, pinNumber));
         						Collections.sort(pinIndex, new Comparator<Map.Entry<?, Integer>>(){
@@ -202,14 +208,15 @@ public class KicadNetParser {
             for (Map.Entry<String, Integer> entry : pinIndex) {
 				labelName = (String)entry.getKey();
 				pinNumber = entry.getValue();
+			//	System.out.println("line 206 mcuref labelName "+  labelName +  " pinNumber=" + pinNumber );
 				if(modelName.contains("ATmega2560")) {
 					Pin pin = megaPinout.pinIndex.get(""+pinNumber);
-					if(pin!=null && !labelName.contains("Net-(U5")) {
+					if(pin!=null && !labelName.contains("Net-(" + mcuComponentReference)) {
 						 line = "#define " + labelName +  " " + pin.arduinoPinType+pin.arduinoPinNumber;
 						 lines.add(line);
 						//System.out.println(pin.pinNumber + "\t\t" +  pin.arduinoPinType+pin.arduinoPinNumber + "\t\t "  + labelName );
 						
-						System.out.println(line);
+						//System.out.println(line);
 					}
 				}
 				
