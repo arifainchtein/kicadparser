@@ -1,0 +1,149 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>com.digitalstables</groupId>
+  <artifactId>kicadparser</artifactId>
+  <version>0.0.1-SNAPSHOT</version>
+  <packaging>jar</packaging>
+
+  <name>kicadparser</name>
+  <url>http://maven.apache.org</url>
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+  </properties>
+  <repositories>
+    <repository>
+        <id>local-maven-repo</id>
+        <url>file:///root/.m2</url>
+    </repository>
+</repositories>
+  <dependencies>
+    <dependency>
+    <groupId>org.apache.commons</groupId>
+    <artifactId>commons-lang3</artifactId>
+    <version>3.4</version>
+</dependency>
+<dependency>
+    <groupId>log4j</groupId>
+    <artifactId>log4j</artifactId>
+    <version>1.2.17</version>
+</dependency>
+<dependency>
+    <groupId>commons-io</groupId>
+    <artifactId>commons-io</artifactId>
+    <version>2.4</version>
+</dependency>
+  </dependencies>
+  <build>
+  <finalName>kicadparser</finalName>
+   <pluginManagement>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-assembly-plugin</artifactId>
+        <version>${assembly.version}</version>
+      </plugin>
+    </plugins>
+  </pluginManagement>
+  
+   <plugins>
+   <plugin>
+      <artifactId>maven-assembly-plugin</artifactId>
+      <groupId>org.apache.maven.plugins</groupId>
+      <version>3.1.0</version>
+      <executions>
+        <execution>
+          <id>make-executable-jar-with-dependencies</id>
+          <phase>package</phase>
+          <goals>
+            <goal>single</goal>
+          </goals>
+          <configuration>
+            <archive>
+              <manifest>
+               <addClasspath>true</addClasspath>
+               <mainClass>com.digitalstables.kicadparser.KicadNetParser</mainClass>
+             </manifest>
+            </archive>
+            <descriptorRefs>
+              <descriptorRef>jar-with-dependencies</descriptorRef>
+            </descriptorRefs>
+            <finalName>kicadparser</finalName>
+          <appendAssemblyId>false</appendAssemblyId>
+        </configuration>
+      </execution>
+    </executions>
+  </plugin>
+ <plugin>
+            <groupId>org.codehaus.mojo</groupId>
+            <artifactId>build-helper-maven-plugin</artifactId>
+            <version>1.10</version>
+            <executions>
+                <execution>
+                    <id>timestamp-property</id>
+                    <goals>
+                        <goal>timestamp-property</goal>
+                    </goals>
+                    <configuration>
+                        <name>build.time</name>
+                        <pattern>dd/MM/yyyy HH:mm</pattern>
+                        <locale>en_AU</locale>
+                        <timeZone>Australia/Victoria</timeZone>
+                    </configuration>
+                </execution>
+            </executions>
+        </plugin>
+  <plugin>
+  <groupId>org.apache.maven.plugins</groupId>
+  <artifactId>maven-compiler-plugin</artifactId>
+  <version>3.1</version>
+  <configuration>
+    <source>1.8</source>
+    <target>1.8</target>
+  </configuration>
+</plugin>
+   <plugin>
+    <groupId>com.google.code.maven-replacer-plugin</groupId>
+    <artifactId>replacer</artifactId>
+    <version>1.5.3</version>
+    <executions>
+        <execution>
+            <phase>generate-sources</phase>
+            <goals>
+                <goal>replace</goal>
+            </goals>
+        </execution>
+    </executions>
+    <configuration>
+        <includes>
+            <include>${basedir}/src/main/java/com/digitalstables/kicadparser/KicadNetParser.java</include>
+        </includes>
+        <replacements>
+            <replacement>
+                !-- <token>/^private\sString\sbuildNumber=.*$/</token> -->
+                <token>public\sstatic\sString\sfinal\sbuildNumber=.*</token> -->
+                <value>public static final String buildNumber="${build.time}";</value>
+            </replacement>
+        </replacements>
+    </configuration>
+</plugin>
+ <plugin>
+      <!-- Build an executable JAR -->
+      <groupId>org.apache.maven.plugins</groupId>
+      <artifactId>maven-jar-plugin</artifactId>
+      <version>3.1.0</version>
+      <configuration>
+        <archive>
+          <manifest>
+            <addClasspath>true</addClasspath>
+            <classpathPrefix>lib/</classpathPrefix>
+            <mainClass>com.digitalstables.kicadparser.KicadNetParser</mainClass>
+          </manifest>
+        </archive>
+      </configuration>
+    </plugin>
+</plugins>
+
+</build>
+</project>
