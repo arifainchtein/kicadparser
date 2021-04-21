@@ -132,7 +132,7 @@ public class KicadNetParser {
             		}else if(line.contains("(field (name JLCPCB)")){
             			String jlcpcbPart = line.substring(21).replace("\"","").replace(")","").trim();
          				kicadComponent.setJlcpcbPart(jlcpcbPart);
-            		}else if(line.contains("(field (name JLCPCB_TYPE)")){
+            		}else if(line.contains("(field (name \"JLCPCB Type\")") || line.contains("(field (name JLCPCB_TYPE)")){
             			String jlcpcbType = line.substring(26).replace(")","");
          				kicadComponent.setJlcpcpType(jlcpcbType);
             		}
