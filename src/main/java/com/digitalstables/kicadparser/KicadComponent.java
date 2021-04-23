@@ -12,6 +12,8 @@ public class KicadComponent {
 	String jlcpcpType="";
 	String datasheet="";
 	String symbolLibrary="";
+	int stock=0;
+	
 	Vector references= new Vector();
 	
 	public void addReference(String r) {
@@ -79,6 +81,18 @@ public class KicadComponent {
 			ref.append(references.elementAt(i));
 			
 		}
-		return ref.toString() + "," + value + "," + jlcpcbPart + "," + jlcpcpType + ","+ footprint + "," + description + "," + part + ","  + datasheet + "," + symbolLibrary;
+		return ref.toString() + "," + value + "," + jlcpcbPart + "," + jlcpcpType +"," + stock+ ","+ footprint + "," + description + "," + part + ","  + datasheet + "," + symbolLibrary ;
+	}
+	public int getStock() {
+		return stock;
+	}
+	public void setStock(int stock) {
+		this.stock = stock;
+	}
+	public Vector getReferences() {
+		return references;
+	}
+	public void setReferences(Vector references) {
+		this.references = references;
 	}
 }

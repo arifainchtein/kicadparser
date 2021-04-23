@@ -17,11 +17,14 @@ import java.util.regex.Pattern;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
+import org.json.JSONObject;
 
 public class KicadNetParser {
 
 	public static final String buildNumber="1";
 			
+	
+	
 	public static void main(String[] args) {
 	
 		if(args.length!=2){
@@ -188,13 +191,17 @@ public class KicadNetParser {
             
             
             ArrayList<String> componentLines = new ArrayList();
-            componentLines.add("reference , value  , jlcpcbPart , jlcpcpType,footprint , description , part , datasheet , symbolLibrary");
+            componentLines.add("reference , value  , jlcpcbPart , jlcpcpType,stock, footprint , description , part , datasheet , symbolLibrary");
             String csvValue;
             Vector v;
+            PostgresqlPersistenceManager p = PostgresqlPersistenceManager.instance();
+            int stock;
             Enumeration en = valueComponentIndex.keys();
             while(en.hasMoreElements()) {
             	String value = (String) en.nextElement();
             	existingKicadComponent = (KicadComponent)valueComponentIndex.get(value);
+            	stock = p.getStockByLscspart (existingKicadComponent.getJlcpcbPart() );
+            	existingKicadComponent.setStock(stock);
             	 csvValue = existingKicadComponent.getCSVLine();
             	// System.out.println(csvValue);
             	componentLines.add(csvValue);
