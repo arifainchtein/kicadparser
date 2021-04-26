@@ -31,7 +31,10 @@ public class UpdateJLCPCBDatabase {
 
 	static String fileAddress="https://jlcpcb.com/componentSearch/uploadComponentInfo";
 	static String destination = "/Users/arifainchtein/Data/digitalstables/mcu/kicad_designs/JLCPCBDatabase.xls";
-	public static void main(String[] args) {
+
+	public UpdateJLCPCBDatabase() {
+	}
+	public void process() {
 		// TODO Auto-generated method stub
 
 		// This will get input data from the server
@@ -79,63 +82,63 @@ public class UpdateJLCPCBDatabase {
 				System.out.println("Downlad Status: " + (downloaded * 100) / (contentLength * 1.0) + "%");
 			}
 			//readExcelFile(destination);
-			
+
 			PostgresqlPersistenceManager p = PostgresqlPersistenceManager.instance();
 			p.initializeDatabase();
-			
+
 			Workbook wb = WorkbookFactory.create(new File(destination));
-		    Sheet mySheet;
-		    Iterator<Row> rowIter;
-		    int rowCounter=0;
-		    Row row;
-		    int Stock;
-		    String   lscspart,FirstCategory , SecondCategory , MFRPart , Package , SolderJoint , Manufacturer , LibraryType , Description , Datasheet , Price ;
+			Sheet mySheet;
+			Iterator<Row> rowIter;
+			int rowCounter=0;
+			Row row;
+			int Stock;
+			String   lscspart,FirstCategory , SecondCategory , MFRPart , Package , SolderJoint , Manufacturer , LibraryType , Description , Datasheet , Price ;
 			for(int i=0;i<2;i++) {
 				mySheet = wb.getSheetAt(i);
 				rowIter = mySheet.rowIterator();
-			     rowCounter=0;
-			    while(rowIter.hasNext()) {
-			    	row = rowIter.next();
-			    	
-			    	if(rowCounter>0) {
-			    		lscspart=row.getCell(0).getStringCellValue();
-			    		FirstCategory =row.getCell(1).getStringCellValue();
-			    		SecondCategory =row.getCell(2).getStringCellValue();
-			    		MFRPart =row.getCell(3).getStringCellValue();
-			    		Package =row.getCell(4).getStringCellValue();
-			    		SolderJoint =row.getCell(5).getStringCellValue();
-			    		Manufacturer =row.getCell(6).getStringCellValue();
-			    		LibraryType =row.getCell(7).getStringCellValue();
-			    		Description =row.getCell(8).getStringCellValue();
-			    		Datasheet =row.getCell(9).getStringCellValue();
-			    		Price =row.getCell(10).getStringCellValue();
-			    		Stock=Integer.parseInt(row.getCell(11).getStringCellValue());
-			    		p.insertRecord( lscspart,FirstCategory , SecondCategory , MFRPart , Package , SolderJoint , Manufacturer , LibraryType , Description , Datasheet , Price , Stock);
-	//	        		System.out.println("lscs part= " + row.getCell(0).getStringCellValue());
-	//	        		System.out.println("First Category= " + row.getCell(1).getStringCellValue());
-	//	        		System.out.println("Second Category= " + row.getCell(2).getStringCellValue());
-	//	        		System.out.println("MFR.Part= " + row.getCell(3).getStringCellValue());
-	//	        		System.out.println("Package= " + row.getCell(4).getStringCellValue());
-	//	        		System.out.println("Solder Joint= " + row.getCell(5).getStringCellValue());
-	//	        		System.out.println("Manufacturer= " + row.getCell(6).getStringCellValue());
-	//	        		System.out.println("Library Type= " + row.getCell(7).getStringCellValue());
-	//	        		System.out.println("Description= " + row.getCell(8).getStringCellValue());
-	//	        		System.out.println("Datasheet= " + row.getCell(9).getStringCellValue());
-	//	        		System.out.println("Price= " + row.getCell(10).getStringCellValue());
-	//	        		System.out.println("Stock= " + row.getCell(11).getStringCellValue());
-		        	}
-			    	System.out.println("inserted sheet=" + i + "  row= " + rowCounter);
-			    	rowCounter++;
-			    }
+				rowCounter=0;
+				while(rowIter.hasNext()) {
+					row = rowIter.next();
+
+					if(rowCounter>0) {
+						lscspart=row.getCell(0).getStringCellValue();
+						FirstCategory =row.getCell(1).getStringCellValue();
+						SecondCategory =row.getCell(2).getStringCellValue();
+						MFRPart =row.getCell(3).getStringCellValue();
+						Package =row.getCell(4).getStringCellValue();
+						SolderJoint =row.getCell(5).getStringCellValue();
+						Manufacturer =row.getCell(6).getStringCellValue();
+						LibraryType =row.getCell(7).getStringCellValue();
+						Description =row.getCell(8).getStringCellValue();
+						Datasheet =row.getCell(9).getStringCellValue();
+						Price =row.getCell(10).getStringCellValue();
+						Stock=Integer.parseInt(row.getCell(11).getStringCellValue());
+						p.insertRecord( lscspart,FirstCategory , SecondCategory , MFRPart , Package , SolderJoint , Manufacturer , LibraryType , Description , Datasheet , Price , Stock);
+						//	        		System.out.println("lscs part= " + row.getCell(0).getStringCellValue());
+						//	        		System.out.println("First Category= " + row.getCell(1).getStringCellValue());
+						//	        		System.out.println("Second Category= " + row.getCell(2).getStringCellValue());
+						//	        		System.out.println("MFR.Part= " + row.getCell(3).getStringCellValue());
+						//	        		System.out.println("Package= " + row.getCell(4).getStringCellValue());
+						//	        		System.out.println("Solder Joint= " + row.getCell(5).getStringCellValue());
+						//	        		System.out.println("Manufacturer= " + row.getCell(6).getStringCellValue());
+						//	        		System.out.println("Library Type= " + row.getCell(7).getStringCellValue());
+						//	        		System.out.println("Description= " + row.getCell(8).getStringCellValue());
+						//	        		System.out.println("Datasheet= " + row.getCell(9).getStringCellValue());
+						//	        		System.out.println("Price= " + row.getCell(10).getStringCellValue());
+						//	        		System.out.println("Stock= " + row.getCell(11).getStringCellValue());
+					}
+					System.out.println("inserted sheet=" + i + "  row= " + rowCounter);
+					rowCounter++;
+				}
 			}
-		   
-			
-			
+
+
+
 		}catch(Exception e) {
-			 System.out.println("fail excel file : " + e.getMessage());
+			System.out.println("fail excel file : " + e.getMessage());
 		}
-			
-			
+
+
 
 		// closing used resources
 		// The computer will not be able to use the image
@@ -147,12 +150,15 @@ public class UpdateJLCPCBDatabase {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-
 	}
-	
-	
-	
-	 
-	
+	public static void main(String[] args) {
+
+		new UpdateJLCPCBDatabase();
+	}
+
+
+
+
+
 
 }

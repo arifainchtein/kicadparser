@@ -12,6 +12,8 @@ public class KicadComponent {
 	String jlcpcpType="";
 	String datasheet="";
 	String symbolLibrary="";
+	double price=0.0;
+	
 	int stock=0;
 	
 	Vector references= new Vector();
@@ -76,13 +78,24 @@ public class KicadComponent {
 	public String getCSVLine() {
 		// TODO Auto-generated method stub
 		StringBuffer ref= new StringBuffer();
+		double totalCostPerPart=0;
 		for(int i=0;i<references.size();i++) {
 			if(i>0)ref.append(" ");
 			ref.append(references.elementAt(i));
 			
 		}
-		return ref.toString() + "," + value + "," + jlcpcbPart + "," + jlcpcpType +"," + stock+ ","+ footprint + "," + description + "," + part + ","  + datasheet + "," + symbolLibrary ;
+		totalCostPerPart = references.size()*price;
+	//	if(jlcpcpType.contains("Extended")) totalCostPerPart+=3;
+		return ref.toString() + "," + value + "," + jlcpcbPart + "," + jlcpcpType +"," + price + ","  + totalCostPerPart+ ","+ stock+ ","+ footprint + "," + description + "," + part + ","  + datasheet + "," + symbolLibrary ;
 	}
+	public double getTotalCostPerPart() {
+		// TODO Auto-generated method stub
+		double totalCostPerPart=0;
+		totalCostPerPart = references.size()*price;
+	//	if(jlcpcpType.contains("Extended")) totalCostPerPart+=3;
+		return totalCostPerPart;
+	}
+	
 	public int getStock() {
 		return stock;
 	}
@@ -94,5 +107,11 @@ public class KicadComponent {
 	}
 	public void setReferences(Vector references) {
 		this.references = references;
+	}
+	public double getPrice() {
+		return price;
+	}
+	public void setPrice(double price) {
+		this.price = price;
 	}
 }

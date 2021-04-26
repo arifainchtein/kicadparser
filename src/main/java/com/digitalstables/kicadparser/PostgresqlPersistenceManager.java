@@ -248,6 +248,47 @@ public class PostgresqlPersistenceManager {
 		}
 		return Stock;
 	}
+	
+	public String getPriceByLscspart (String lscspart ) {
+		String sql = "select   price from jlcpcb   where lscspart = ? ";
+		Connection connection=null;
+		PreparedStatement preparedStatement=null;
+		String   FirstCategory , SecondCategory , MFRPart , Package , SolderJoint , Manufacturer , LibraryType , Description , Datasheet , Price ;
+		ResultSet rs=null;
+		String price="";
+
+		JSONObject toReturn=new JSONObject();
+
+		try {
+			connection = connectionPool.getConnection();
+			preparedStatement = connection.prepareStatement(sql);
+			preparedStatement.setString(1, lscspart);
+
+			rs = preparedStatement.executeQuery();
+			while(rs.next()) {
+				price = rs.getString(1);
+			}
+
+
+
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			System.out.println(getStringException(e));
+		}finally{
+			if(preparedStatement!=null) {
+				try {
+					if(rs!=null)rs.close();
+					preparedStatement.close();
+				} catch (SQLException e) {
+					// TODO Auto-generated catch block
+					System.out.println(getStringException(e));
+				}
+			}
+
+			if(connection!=null)closeConnection(connection);
+		}
+		return price;
+	}
 	public static String getStringException(Exception e){
 		StringWriter sw = new StringWriter();
 		e.printStackTrace(new PrintWriter(sw));

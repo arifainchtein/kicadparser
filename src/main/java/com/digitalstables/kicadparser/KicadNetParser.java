@@ -26,7 +26,7 @@ public class KicadNetParser {
 	
 	
 	public static void main(String[] args) {
-	
+	   long startingTime = System.currentTimeMillis();
 		if(args.length!=2){
 			System.out.println("Usage java -jar kicadparser.jar  path_to_dot_net_file  mcuComponentReference");
 			System.out.println("e.g.");
@@ -35,6 +35,11 @@ public class KicadNetParser {
 		}
 		String fileToReadName = args[0];//"/Users/arifainchtein/Data/DigitalStables/mcu/kicad_designs/gloria_field_kicad/gloria_field_kicad.net";  //args[0];
 		File fileToRead= new File(fileToReadName);
+		System.out.println("About to updateJLCPCB database");
+		UpdateJLCPCBDatabase u = new UpdateJLCPCBDatabase();
+		u.process();
+		
+		System.out.println("Update JLCPCB database completed");
 		
 		
 		if(!fileToRead.isFile()){
@@ -191,23 +196,67 @@ public class KicadNetParser {
             
             
             ArrayList<String> componentLines = new ArrayList();
-            componentLines.add("reference , value  , jlcpcbPart , jlcpcpType,stock, footprint , description , part , datasheet , symbolLibrary");
+            componentLines.add("reference , value  , jlcpcbPart , jlcpcpType,price,total,stock, footprint , description , part , datasheet , symbolLibrary");
             String csvValue;
             Vector v;
             PostgresqlPersistenceManager p = PostgresqlPersistenceManager.instance();
             int stock;
             Enumeration en = valueComponentIndex.keys();
+            String encodedPrice="";
+            double componentPrice=0.0;
+            double totalCost=0;
+            double extendedPartsCount=0;
+            String libraryType;
+            JSONObject part;
             while(en.hasMoreElements()) {
             	String value = (String) en.nextElement();
             	existingKicadComponent = (KicadComponent)valueComponentIndex.get(value);
-            	stock = p.getStockByLscspart (existingKicadComponent.getJlcpcbPart() );
+            	part = p.getRecordByLscspart (existingKicadComponent.getJlcpcbPart());
+            	
+            	if(part.has("Stock")) {
+            		stock = part.getInt("Stock");
+            	}else {
+            		stock=0;
+            		System.out.println("NO STOCK=" + part.toString(4) + " " + existingKicadComponent.getJlcpcbPart());
+            		continue;
+            	}
+            	//stock = p.getStockByLscspart (existingKicadComponent.getJlcpcbPart() );
             	existingKicadComponent.setStock(stock);
+            	//
+            	// the price is in the format 
+            	// 1-999:0.002515152,1000-:0.000848485
+            	// assume we are paying the first price
+            	
+            	encodedPrice = part.getString("Price");//.getPriceByLscspart (existingKicadComponent.getJlcpcbPart() );
+            	libraryType = part.getString("LibraryType");
+            	if(libraryType.equals("Extended"))extendedPartsCount++;
+            		
+            	componentPrice=0;
+            	if(encodedPrice.contains(",") && encodedPrice.contains(":")) {
+            		componentPrice = Double.parseDouble(encodedPrice.split(",")[0].split(":")[1]);
+            	}
+            	System.out.println("componentPrice=" + componentPrice + " price=" + encodedPrice);
+            	existingKicadComponent.setPrice(componentPrice);
             	 csvValue = existingKicadComponent.getCSVLine();
             	// System.out.println(csvValue);
             	componentLines.add(csvValue);
+            	totalCost += existingKicadComponent.getTotalCostPerPart();
             }
+            totalCost = Math.round(totalCost * 100.0) / 100.0;
+            double extendedPartCharge = 3*extendedPartsCount;
+            componentLines.add("Total Part Cost," + totalCost);
+            componentLines.add("Extended Part Cost," + extendedPartCharge);
+            double twoBoardsCost = extendedPartCharge + 2*totalCost;
+            componentLines.add("Total Cost 2 Boards," + twoBoardsCost + ", Cost Per Board," +  twoBoardsCost/2 );
             
-    
+            double fiveBoardsCost = extendedPartCharge + 5*totalCost;
+            componentLines.add("Total Cost 5 Boards," + fiveBoardsCost + ", Cost Per Board," +  fiveBoardsCost/5 );
+           
+            double tenBoardsCost = extendedPartCharge + 10*totalCost;
+            componentLines.add("Total Cost 10 Boards," + tenBoardsCost + ", Cost Per Board," +  tenBoardsCost/10 );
+           
+           
+             
             FileUtils.writeLines(new File(componentTypeReportFileName), componentLines);
             
            // System.out.println("Physical\tArduino Pin\tLabel Name "  );
@@ -228,8 +277,10 @@ public class KicadNetParser {
 				}
 				
             }
+            double durationSeconds = .001*(System.currentTimeMillis()-startingTime);
+            
             FileUtils.writeLines(new File(gloriaFieldPinDefinitionFileName), lines);
-            System.out.println("Saved the following files:");
+            System.out.println("It took " + durationSeconds + " seconds.  Saved the following files:");
             System.out.println(gloriaFieldPinDefinitionFileName);
             System.out.println(componentTypeReportFileName);
             
