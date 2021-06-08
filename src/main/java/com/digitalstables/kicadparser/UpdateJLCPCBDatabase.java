@@ -79,7 +79,9 @@ public class UpdateJLCPCBDatabase {
 				// Writing data
 				outputStream.write(buffer, 0, length);
 				downloaded+=length;
-				System.out.println("Downlad Status: " + (downloaded * 100) / (contentLength * 1.0) + "%");
+				System.out.print("\rDownlad Status: ");
+				System.out.printf("%.2f%%", ((double)downloaded/(double)contentLength)*100.0);
+			//	System.out.println("Downlad Status: " + (downloaded * 100) / (contentLength * 1.0) + "%");
 			}
 			//readExcelFile(destination);
 
@@ -92,11 +94,16 @@ public class UpdateJLCPCBDatabase {
 			int rowCounter=0;
 			Row row;
 			int Stock;
+			int totalRows;
 			String   lscspart,FirstCategory , SecondCategory , MFRPart , Package , SolderJoint , Manufacturer , LibraryType , Description , Datasheet , Price ;
+			
+			totalRows = wb.getSheetAt(0).getPhysicalNumberOfRows() + wb.getSheetAt(1).getPhysicalNumberOfRows();
+			
 			for(int i=0;i<2;i++) {
 				mySheet = wb.getSheetAt(i);
 				rowIter = mySheet.rowIterator();
-				rowCounter=0;
+				totalRows = mySheet.getPhysicalNumberOfRows();
+				
 				while(rowIter.hasNext()) {
 					row = rowIter.next();
 
@@ -127,7 +134,9 @@ public class UpdateJLCPCBDatabase {
 						//	        		System.out.println("Price= " + row.getCell(10).getStringCellValue());
 						//	        		System.out.println("Stock= " + row.getCell(11).getStringCellValue());
 					}
-					System.out.println("inserted sheet=" + i + "  row= " + rowCounter);
+					System.out.print("\r rebuilding component database " );
+					System.out.printf("%.2f%%", ((double)rowCounter/(double)totalRows)*100.0);
+				
 					rowCounter++;
 				}
 			}
@@ -135,7 +144,7 @@ public class UpdateJLCPCBDatabase {
 
 
 		}catch(Exception e) {
-			System.out.println("fail excel file : " + e.getMessage());
+			System.out.println("fail excel file : " + e);
 		}
 
 

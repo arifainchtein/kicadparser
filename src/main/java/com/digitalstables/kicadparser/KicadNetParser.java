@@ -4,12 +4,20 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.URL;
+import java.net.URLConnection;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Enumeration;
 import java.util.Hashtable;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Vector;
 import java.util.regex.Matcher;
@@ -23,16 +31,22 @@ public class KicadNetParser {
 
 	public static final String buildNumber="1";
 			
-	
+	static ArrayList<String> missingDatasheets = new ArrayList();
+	static ArrayList<String> missingStock = new ArrayList();
+	static ArrayList<String> missingPrice = new ArrayList();
 	
 	public static void main(String[] args) {
 	   long startingTime = System.currentTimeMillis();
-		if(args.length!=2){
-			System.out.println("Usage java -jar kicadparser.jar  path_to_dot_net_file  mcuComponentReference");
+		if(args.length!=3){
+			System.out.println("Usage java -jar kicadparser.jar  path_to_dot_net_file  mcuComponentReference  path_to_generated_cpl_file");
 			System.out.println("e.g.");
 			System.out.println("java -jar kicadparser.jar  /Users/john/MyProject/MyProject.net  U5");
 			System.exit(0);
 		}
+		double durationSeconds=0.0;
+		
+		
+		//String fileToReadName = "/Users/arifainchtein/Data/DigitalStables/mcu/kicad_designs/production/valentino_kicad_V2/valentino_2104.net";
 		String fileToReadName = args[0];//"/Users/arifainchtein/Data/DigitalStables/mcu/kicad_designs/gloria_field_kicad/gloria_field_kicad.net";  //args[0];
 		File fileToRead= new File(fileToReadName);
 		System.out.println("About to updateJLCPCB database");
@@ -41,6 +55,7 @@ public class KicadNetParser {
 		
 		System.out.println("Update JLCPCB database completed");
 		
+		ArrayList referenceList = new ArrayList();
 		
 		if(!fileToRead.isFile()){
 			System.out.println(fileToReadName + " is not a valid file");
@@ -49,10 +64,18 @@ public class KicadNetParser {
 		
 		String dirPath = FilenameUtils.getFullPath(fileToReadName);
 		String baseName = FilenameUtils.getBaseName(fileToReadName);
-		String mcuComponentReference = args[1];//"U5";
+		String mcuComponentReference = args[1];
+	    //String mcuComponentReference = "U15";
+		
+	    String cplFileName = args[2];
+		//String cplFileName = "/Users/arifainchtein/Data/DigitalStables/mcu/kicad_designs/production/valentino_kicad_V2/valentino_2104.pro_cpl_jlc.csv";
+		String datasheetDir = dirPath + "datasheets/";
+		File dsDir = new File(datasheetDir);
+		dsDir.mkdirs();
+		
 		String gloriaFieldPinDefinitionFileName = dirPath + baseName + ".h" ;///Users/arifainchtein/Data/DigitalStables/mcu/kicad_designs/gloria_field_kicad/GloriaPinDefintion.h";
 		String componentTypeReportFileName = dirPath + "ComponentReport.csv" ;//"/Users/arifainchtein/Data/DigitalStables/mcu/kicad_designs/gloria_field_kicad/ComponentReport.csv";
-	
+		String analysisReportFileName = dirPath + "JLCPCBAnalysisReport.txt" ;
 	
 		KicadComponent kicadComponent= new KicadComponent();
 		KicadComponent existingKicadComponent;
@@ -60,7 +83,12 @@ public class KicadNetParser {
 		ArrayList<Map.Entry<KicadComponent, String>> kicadComponentArray = new ArrayList();
 		MegaPinout megaPinout = new MegaPinout();
 		Hashtable valueComponentIndex = new Hashtable();
+		Hashtable noJLCPCBomponentIndex = new Hashtable();
 		
+		double componentPrice=0.0;
+        double totalCost=0;
+        double extendedPartsCount=0;
+        
         try (BufferedReader br = new BufferedReader(new FileReader(fileToRead))) 
         {
         	ArrayList<Map.Entry<String, Integer>> pinIndex = new ArrayList();
@@ -87,19 +115,24 @@ public class KicadNetParser {
             		if(line.startsWith("(comp (ref")){
             			//
             			// show the last one
-            			
+            			//System.out.println("line=" + line);
             			String csvLine = kicadComponent.getCSVLine();
+            			
             			if(!csvLine.equals(",,,,,,,,")){
-            				if(valueComponentIndex.containsKey(kicadComponent.getValue())) {
-            					existingKicadComponent = (KicadComponent)valueComponentIndex.get(kicadComponent.getValue());
-            					existingKicadComponent.addReference(kicadComponent.getReference());
-    	                    	valueComponentIndex.put(kicadComponent.getValue(),existingKicadComponent);
-		                    }else {
-		                    	kicadComponent.addReference(kicadComponent.getReference());
-    	                    	valueComponentIndex.put(kicadComponent.getValue(),kicadComponent);
-		                    }
-            				
-                    		
+            				if(!kicadComponent.getJlcpcbPart().equals("")) {
+            					if(valueComponentIndex.containsKey(kicadComponent.getJlcpcbPart())) {
+                					existingKicadComponent = (KicadComponent)valueComponentIndex.get(kicadComponent.getJlcpcbPart());
+                					existingKicadComponent.addReference(kicadComponent.getReference());
+                					referenceList.add(kicadComponent.getReference());
+        	                    	valueComponentIndex.put(kicadComponent.getJlcpcbPart(),existingKicadComponent);
+    		                    }else {
+    		                    	referenceList.add(kicadComponent.getReference());
+    		                    	kicadComponent.addReference(kicadComponent.getReference());
+    		                    	valueComponentIndex.put(kicadComponent.getJlcpcbPart(),kicadComponent);
+    		                    }
+            				}else {
+            					noJLCPCBomponentIndex.put(kicadComponent.getReference(),kicadComponent);
+            				}
 	            			kicadComponentArray.add(new AbstractMap.SimpleEntry<KicadComponent, String>(kicadComponent, kicadComponent.getReference()));
 							Collections.sort(kicadComponentArray, new Comparator<Map.Entry<?, String>>(){
 								public int compare(Map.Entry<?, String> o1, Map.Entry<?, String> o2) {
@@ -160,7 +193,7 @@ public class KicadNetParser {
             	
             	
             	
-            //	System.out.println("line " + line);
+            
                 if(line.equals("(nets")) {
                 	inNetArea=true;
                 }else {
@@ -169,7 +202,7 @@ public class KicadNetParser {
                 			insideSpecificNet=true;
                 			int lineLength= line.length();
                 			 labelName = line.substring(line.indexOf("(name")+6, lineLength-1);
-                			//System.out.println("found label " + labelName);
+                			
                 		}else if(insideSpecificNet) {
                 			if(line.contains("(ref "+ mcuComponentReference)) {
                 				int pinPos = line.indexOf("(pin");
@@ -177,7 +210,6 @@ public class KicadNetParser {
                 				String potLine = line.substring(pinPos+5, line.length()).replace("))", "");
                 				if(potLine.contains(")"))potLine = potLine.replace(")", "");
                 				 pinNumber = Integer.parseInt(potLine);
-                				// System.out.println("line contains mcuref labelName "+  labelName +  " pinNumber=" + pinNumber );
                 				
                 				pinIndex.add(new AbstractMap.SimpleEntry<String, Integer>(labelName, pinNumber));
         						Collections.sort(pinIndex, new Comparator<Map.Entry<?, Integer>>(){
@@ -202,93 +234,204 @@ public class KicadNetParser {
             PostgresqlPersistenceManager p = PostgresqlPersistenceManager.instance();
             int stock;
             Enumeration en = valueComponentIndex.keys();
+            int totalCompnents =valueComponentIndex.size();
             String encodedPrice="";
-            double componentPrice=0.0;
-            double totalCost=0;
-            double extendedPartsCount=0;
+            
             String libraryType;
             JSONObject part;
+            String datasheet="";
+            int counter=0;
             while(en.hasMoreElements()) {
             	String value = (String) en.nextElement();
+            	
             	existingKicadComponent = (KicadComponent)valueComponentIndex.get(value);
             	part = p.getRecordByLscspart (existingKicadComponent.getJlcpcbPart());
+            	if(part.has("Datasheet")) {
+            		
+            		datasheet = part.getString("Datasheet");
+            	}else {
+            		missingDatasheets.add( existingKicadComponent.getJlcpcbPart() );
+            		
+            	}
+            	counter++;
+            	System.out.print("\r processing design components " );
+				System.out.printf("%.2f%%", ((double)counter/(double)totalCompnents)*100.0);
+            	if(datasheet!=null && datasheet.length()>5) {
+            		if(!datasheet.startsWith("http://") && !datasheet.startsWith("https://")) {
+            			datasheet = "http://" + datasheet;
+            		}          		
+            		downloadDatasheet( datasheetDir, existingKicadComponent.getJlcpcbPart(),datasheet);          		
+            	}else {
+            		missingDatasheets.add( existingKicadComponent.getJlcpcbPart() + " -" + datasheet);
+            	}
+            	
+            	
             	
             	if(part.has("Stock")) {
             		stock = part.getInt("Stock");
             	}else {
             		stock=0;
-            		System.out.println("NO STOCK=" + part.toString(4) + " " + existingKicadComponent.getJlcpcbPart());
-            		continue;
+            		missingStock.add(existingKicadComponent.getReference());		
             	}
-            	//stock = p.getStockByLscspart (existingKicadComponent.getJlcpcbPart() );
             	existingKicadComponent.setStock(stock);
             	//
             	// the price is in the format 
             	// 1-999:0.002515152,1000-:0.000848485
             	// assume we are paying the first price
-            	
-            	encodedPrice = part.getString("Price");//.getPriceByLscspart (existingKicadComponent.getJlcpcbPart() );
-            	libraryType = part.getString("LibraryType");
-            	if(libraryType.equals("Extended"))extendedPartsCount++;
-            		
-            	componentPrice=0;
-            	if(encodedPrice.contains(",") && encodedPrice.contains(":")) {
-            		componentPrice = Double.parseDouble(encodedPrice.split(",")[0].split(":")[1]);
+            	if(part.has("Price")) {
+            		encodedPrice = part.getString("Price");//.getPriceByLscspart (existingKicadComponent.getJlcpcbPart() );
+            		componentPrice=0;
+                	if(encodedPrice.contains(",") && encodedPrice.contains(":")) {
+                		componentPrice = Double.parseDouble(encodedPrice.split(",")[0].split(":")[1]);
+                	}
+                	existingKicadComponent.setPrice(componentPrice);
+            	}else {
+            		missingPrice.add(existingKicadComponent.getReference());
+            		existingKicadComponent.setPrice(0);
             	}
-            	System.out.println("componentPrice=" + componentPrice + " price=" + encodedPrice);
-            	existingKicadComponent.setPrice(componentPrice);
-            	 csvValue = existingKicadComponent.getCSVLine();
-            	// System.out.println(csvValue);
+            	
+            	if(part.has("LibraryType")) {
+            		libraryType = part.getString("LibraryType");
+            		if(libraryType.equals("Extended"))extendedPartsCount++;
+            	}else {
+            		
+            	}
+            	csvValue = existingKicadComponent.getCSVLine();
             	componentLines.add(csvValue);
             	totalCost += existingKicadComponent.getTotalCostPerPart();
             }
-            totalCost = Math.round(totalCost * 100.0) / 100.0;
-            double extendedPartCharge = 3*extendedPartsCount;
-            componentLines.add("Total Part Cost," + totalCost);
-            componentLines.add("Extended Part Cost," + extendedPartCharge);
-            double twoBoardsCost = extendedPartCharge + 2*totalCost;
-            componentLines.add("Total Cost 2 Boards," + twoBoardsCost + ", Cost Per Board," +  twoBoardsCost/2 );
-            
-            double fiveBoardsCost = extendedPartCharge + 5*totalCost;
-            componentLines.add("Total Cost 5 Boards," + fiveBoardsCost + ", Cost Per Board," +  fiveBoardsCost/5 );
-           
-            double tenBoardsCost = extendedPartCharge + 10*totalCost;
-            componentLines.add("Total Cost 10 Boards," + tenBoardsCost + ", Cost Per Board," +  tenBoardsCost/10 );
-           
-           
-             
-            FileUtils.writeLines(new File(componentTypeReportFileName), componentLines);
-            
-           // System.out.println("Physical\tArduino Pin\tLabel Name "  );
+            FileUtils.writeLines(new File(componentTypeReportFileName), componentLines); 
             ArrayList<String> lines = new ArrayList();
             for (Map.Entry<String, Integer> entry : pinIndex) {
 				labelName = (String)entry.getKey();
 				pinNumber = entry.getValue();
-			//	System.out.println("line 206 mcuref labelName "+  labelName +  " pinNumber=" + pinNumber );
 				if(modelName.contains("ATmega2560")) {
 					Pin pin = megaPinout.pinIndex.get(""+pinNumber);
 					if(pin!=null && !labelName.contains("Net-(" + mcuComponentReference)) {
 						 line = "#define " + labelName +  " " + pin.arduinoPinType+pin.arduinoPinNumber;
 						 lines.add(line);
-						//System.out.println(pin.pinNumber + "\t\t" +  pin.arduinoPinType+pin.arduinoPinNumber + "\t\t "  + labelName );
-						
-						//System.out.println(line);
 					}
 				}
 				
             }
-            double durationSeconds = .001*(System.currentTimeMillis()-startingTime);
+             durationSeconds = .001*(System.currentTimeMillis()-startingTime);
             
             FileUtils.writeLines(new File(gloriaFieldPinDefinitionFileName), lines);
-            System.out.println("It took " + durationSeconds + " seconds.  Saved the following files:");
-            System.out.println(gloriaFieldPinDefinitionFileName);
-            System.out.println(componentTypeReportFileName);
+            
+           
             
         } 
         catch (IOException e) 
         {
             e.printStackTrace();
         }
+        
+        ArrayList<String> analysisLines = new ArrayList();
+        
+        totalCost = Math.round(totalCost * 100.0) / 100.0;
+        double extendedPartCharge = 3*extendedPartsCount;
+        analysisLines.add("Total Part Cost," + totalCost);
+        analysisLines.add("Extended Part Cost," + extendedPartCharge);
+        double twoBoardsCost = extendedPartCharge + 2*totalCost;
+        analysisLines.add("Total Cost 2 Boards," + twoBoardsCost + ", Cost Per Board," +  twoBoardsCost/2 );
+        
+        double fiveBoardsCost = extendedPartCharge + 5*totalCost;
+        analysisLines.add("Total Cost 5 Boards," + fiveBoardsCost + ", Cost Per Board," +  fiveBoardsCost/5 );
+       
+        double tenBoardsCost = extendedPartCharge + 10*totalCost;
+        analysisLines.add("Total Cost 10 Boards," + tenBoardsCost + ", Cost Per Board," +  tenBoardsCost/10 );
+       //
+        
+        try (BufferedReader br = new BufferedReader(new FileReader(cplFileName))) 
+        {
+        	ArrayList<Map.Entry<String, Integer>> pinIndex = new ArrayList();
+        	String cplReference;
+        	String line;
+        	String tokens;
+            while ((line = br.readLine()) != null){
+            	cplReference=line.split(",")[0];
+            	referenceList.remove(cplReference);
+            }
+            System.out.println("");
+            System.out.println("  ");
+            Collections.sort(referenceList);  
+            analysisLines.add("Components not in the CPL:" );
+            for(int j=0;j<referenceList.size();j++) {
+            	analysisLines.add((String) referenceList.get(j));
+            	
+            }
+            
+        }catch (IOException e) {
+        	e.printStackTrace();
+        }
+        
+        
+        Enumeration en2 = noJLCPCBomponentIndex.keys();
+       // System.out.println("Components without JLCPCB code:");
+        while( en2.hasMoreElements()) {
+        	String k = (String) en2.nextElement();
+        	kicadComponent = (KicadComponent) noJLCPCBomponentIndex.get(k);
+        	//System.out.println("ref:" + kicadComponent.getReference());;
+        	 analysisLines.add(kicadComponent.getReference());
+        }
+        
+        
+        Collections.sort(missingDatasheets);  
+        Iterator it = missingDatasheets.iterator();
+        //System.out.println("Components without spreadsheet:");
+        analysisLines.add("Components without spreadsheet:");
+        String ds;
+        while(it.hasNext()) {
+        	ds=(String) it.next();
+        	
+        	analysisLines.add(ds);
+        }
+        Collections.sort(missingPrice);
+        analysisLines.add("Components without price:");
+        it = missingPrice.iterator();
+        while(it.hasNext()) {
+        	ds=(String) it.next();
+        	analysisLines.add(ds);
+        }
+        
+        analysisLines.add("Components without stock:");
+        it = missingStock.iterator();
+        while(it.hasNext()) {
+        	ds=(String) it.next();
+        	analysisLines.add(ds);
+        }
+        try {
+			FileUtils.writeLines(new File(analysisReportFileName), analysisLines);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+        
+        System.out.println("It took " + durationSeconds + " seconds.  Saved the following files:");
+        System.out.println(gloriaFieldPinDefinitionFileName);
+        System.out.println(componentTypeReportFileName);
+        System.out.println(analysisReportFileName);
 	}
 
+	
+	
+	private static void downloadDatasheet(String datasheetDir, String componentCode,String url) {
+		try {
+			URLConnection connection = new URL(url).openConnection();
+			connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.11 (KHTML, like Gecko) Chrome/23.0.1271.95 Safari/537.11");
+			connection.connect();
+
+			BufferedReader r  = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+			String destFileName =datasheetDir + componentCode + ".pdf";
+			
+			try (InputStream in = connection.getInputStream()) {
+				Files.copy(in, Paths.get(destFileName), StandardCopyOption.REPLACE_EXISTING);
+			} catch (IOException e) {
+				System.out.println("Exc Datasheet=" + e);
+			}
+		}catch(IOException e) {
+			missingDatasheets.add( componentCode + " -" + url);
+		}
+
+	}
 }
