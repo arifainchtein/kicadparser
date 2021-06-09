@@ -40,7 +40,7 @@ public class KicadNetParser {
 		if(args.length!=3){
 			System.out.println("Usage java -jar kicadparser.jar  path_to_dot_net_file  mcuComponentReference  path_to_generated_cpl_file");
 			System.out.println("e.g.");
-			System.out.println("java -jar kicadparser.jar  /Users/john/MyProject/MyProject.net  U5");
+			System.out.println("java -jar kicadparser.jar  /Users/john/MyProject/MyProject.net  U5  MyProject.pro_cpl_jlc.csv");
 			System.exit(0);
 		}
 		double durationSeconds=0.0;
