@@ -34,7 +34,7 @@ public class KicadNetParser {
 	static ArrayList<String> missingDatasheets = new ArrayList();
 	static ArrayList<String> missingStock = new ArrayList();
 	static ArrayList<String> missingPrice = new ArrayList();
-	
+	private static String NO_MCU_TEXT="NoMCU";
 	public static void main(String[] args) {
 	   long startingTime = System.currentTimeMillis();
 		if(args.length!=3){
@@ -179,7 +179,7 @@ public class KicadNetParser {
             		}
             		
             		
-            		if(line.contains("(comp (ref "+mcuComponentReference)) {
+            		if(!mcuComponentReference.equals(NO_MCU_TEXT) && line.contains("(comp (ref "+mcuComponentReference)) {
             			insideMainMCUComp=true;
 	            	}
             		if(insideMainMCUComp) {
@@ -204,7 +204,7 @@ public class KicadNetParser {
                 			 labelName = line.substring(line.indexOf("(name")+6, lineLength-1);
                 			
                 		}else if(insideSpecificNet) {
-                			if(line.contains("(ref "+ mcuComponentReference)) {
+                			if(!mcuComponentReference.equals(NO_MCU_TEXT) && line.contains("(ref "+ mcuComponentReference)) {
                 				int pinPos = line.indexOf("(pin");
                 				
                 				String potLine = line.substring(pinPos+5, line.length()).replace("))", "");
@@ -301,23 +301,24 @@ public class KicadNetParser {
             	totalCost += existingKicadComponent.getTotalCostPerPart();
             }
             FileUtils.writeLines(new File(componentTypeReportFileName), componentLines); 
-            ArrayList<String> lines = new ArrayList();
-            for (Map.Entry<String, Integer> entry : pinIndex) {
-				labelName = (String)entry.getKey();
-				pinNumber = entry.getValue();
-				if(modelName.contains("ATmega2560")) {
-					Pin pin = megaPinout.pinIndex.get(""+pinNumber);
-					if(pin!=null && !labelName.contains("Net-(" + mcuComponentReference)) {
-						 line = "#define " + labelName +  " " + pin.arduinoPinType+pin.arduinoPinNumber;
-						 lines.add(line);
-					}
-				}
-				
+            if(!mcuComponentReference.equals(NO_MCU_TEXT)) {
+            	ArrayList<String> lines = new ArrayList();
+                for (Map.Entry<String, Integer> entry : pinIndex) {
+    				labelName = (String)entry.getKey();
+    				pinNumber = entry.getValue();
+    				if(modelName.contains("ATmega2560")) {
+    					Pin pin = megaPinout.pinIndex.get(""+pinNumber);
+    					if(pin!=null && !labelName.contains("Net-(" + mcuComponentReference)) {
+    						 line = "#define " + labelName +  " " + pin.arduinoPinType+pin.arduinoPinNumber;
+    						 lines.add(line);
+    					}
+    				}
+    				
+                }
+                FileUtils.writeLines(new File(gloriaFieldPinDefinitionFileName), lines);
             }
-             durationSeconds = .001*(System.currentTimeMillis()-startingTime);
             
-            FileUtils.writeLines(new File(gloriaFieldPinDefinitionFileName), lines);
-            
+            durationSeconds = .001*(System.currentTimeMillis()-startingTime);
            
             
         } 
@@ -349,7 +350,7 @@ public class KicadNetParser {
         	String line;
         	String tokens;
             while ((line = br.readLine()) != null){
-            	cplReference=line.split(",")[0];
+            	cplReference=line.split(",")[0].replace("\"","");
             	referenceList.remove(cplReference);
             }
             System.out.println("");

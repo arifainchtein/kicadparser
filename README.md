@@ -18,4 +18,8 @@ mvn package
 
 then 
 java -jar kicadparser.jar  path_to_kicad_dot_net_file  component_reference_mcu   path_to_cpl_file_generated_by_JLCKicadTools
+<p>
+In case you are using a pcb that does not have a MCU then the second parameter must be NoMCU therefore the command must be:<br>
+
+java -jar kicadparser.jar  path_to_kicad_dot_net_file  NoMCU   path_to_cpl_file_generated_by_JLCKicadTools
 
