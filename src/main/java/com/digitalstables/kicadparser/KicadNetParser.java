@@ -25,6 +25,7 @@ import java.util.regex.Pattern;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.json.JSONObject;
 
 public class KicadNetParser {
@@ -41,17 +42,17 @@ public class KicadNetParser {
 			System.out.println("Usage java -jar kicadparser.jar  path_to_dot_net_file  mcuComponentReference  path_to_generated_cpl_file");
 			System.out.println("e.g.");
 			System.out.println("java -jar kicadparser.jar  /Users/john/MyProject/MyProject.net  U5  MyProject.pro_cpl_jlc.csv");
-			System.exit(0);
+		//	System.exit(0);
 		}
 		double durationSeconds=0.0;
 		
 		
-		//String fileToReadName = "/Users/arifainchtein/Data/DigitalStables/mcu/kicad_designs/production/valentino_kicad_V2/valentino_2104.net";
+		//String fileToReadName = "/Users/arifainchtein/Data/DigitalStables/mcu/kicad_designs/LangleyReceiver/LangleyReceiverLayer3/LangleyReceiverLayer3.net";
 		String fileToReadName = args[0];//"/Users/arifainchtein/Data/DigitalStables/mcu/kicad_designs/gloria_field_kicad/gloria_field_kicad.net";  //args[0];
 		File fileToRead= new File(fileToReadName);
 		System.out.println("About to updateJLCPCB database");
-		UpdateJLCPCBDatabase u = new UpdateJLCPCBDatabase();
-		u.process();
+		//UpdateJLCPCBDatabase u = new UpdateJLCPCBDatabase();
+		//u.process();
 		
 		System.out.println("Update JLCPCB database completed");
 		
@@ -65,23 +66,29 @@ public class KicadNetParser {
 		String dirPath = FilenameUtils.getFullPath(fileToReadName);
 		String baseName = FilenameUtils.getBaseName(fileToReadName);
 		String mcuComponentReference = args[1];
-	    //String mcuComponentReference = "U15";
+	   // String mcuComponentReference = "NoMCU";
 		
 	    String cplFileName = args[2];
-		//String cplFileName = "/Users/arifainchtein/Data/DigitalStables/mcu/kicad_designs/production/valentino_kicad_V2/valentino_2104.pro_cpl_jlc.csv";
+		//String cplFileName = "/Users/arifainchtein/Data/DigitalStables/mcu/kicad_designs/LangleyReceiver/LangleyReceiverLayer3/LangleyReceiverLayer3.pro_cpl_jlc.csv";
 		String datasheetDir = dirPath + "datasheets/";
 		File dsDir = new File(datasheetDir);
 		dsDir.mkdirs();
 		
-		String gloriaFieldPinDefinitionFileName = dirPath + baseName + ".h" ;///Users/arifainchtein/Data/DigitalStables/mcu/kicad_designs/gloria_field_kicad/GloriaPinDefintion.h";
+		String gloriaFieldPinDefinitionFileName = dirPath + baseName + "Pins.h" ;///Users/arifainchtein/Data/DigitalStables/mcu/kicad_designs/gloria_field_kicad/GloriaPinDefintion.h";
 		String componentTypeReportFileName = dirPath + "ComponentReport.csv" ;//"/Users/arifainchtein/Data/DigitalStables/mcu/kicad_designs/gloria_field_kicad/ComponentReport.csv";
 		String analysisReportFileName = dirPath + "JLCPCBAnalysisReport.txt" ;
 	
+		String metadataFileName = dirPath + "Metadata.json" ;
+		JSONObject metadataJSON = new JSONObject();
+		
+		
 		KicadComponent kicadComponent= new KicadComponent();
 		KicadComponent existingKicadComponent;
 		
 		ArrayList<Map.Entry<KicadComponent, String>> kicadComponentArray = new ArrayList();
 		MegaPinout megaPinout = new MegaPinout();
+		ESP32WROOM32Pinout esp32WROOM32Pinout = new ESP32WROOM32Pinout();
+		
 		Hashtable valueComponentIndex = new Hashtable();
 		Hashtable noJLCPCBomponentIndex = new Hashtable();
 		
@@ -108,6 +115,52 @@ public class KicadNetParser {
             		insideComponentDescription=true;
             	}else if(line.equals("(libparts")) {
             		insideComponentDescription=false;
+            	}else if(line.contains("(rev ")) {
+            		
+            		if(line.contains( "\"")) {
+            			String[] revTokens = StringUtils.substringsBetween(line , "\"", "\"");
+                		//String[] revTokens = line.trim().split(" ");
+                		if(revTokens.length>0) {
+                			//String version = revTokens[1].replace("\"", "").replace(")","");
+                			metadataJSON.put("version", revTokens[0]);
+                		}
+            		}else {
+            			String[] revTokens = line.trim().split(" ");
+                		
+                		if(revTokens.length>1) {
+                			String version = revTokens[1].replace("\"", "").replace(")","");
+                			metadataJSON.put("version", version);
+                		}
+            		}
+            		
+            		
+            	}else if(line.contains("(title ")) {
+            		if(line.contains( "\"")) {
+            			String[] titleTokens = StringUtils.substringsBetween(line , "\"", "\"");
+                		//String[] titleTokens = line.trim().split(" ");
+                		if(titleTokens.length>0) {
+                			//String title = titleTokens[1].replace("\"", "").replace(")","");
+                			String title = titleTokens[0];
+                			metadataJSON.put("title", title);
+                		}
+            		}else {
+            			String[] titleTokens = line.trim().split(" ");
+                		
+                		if(titleTokens.length>1) {
+                			String title = titleTokens[1].replace("\"", "").replace(")","");
+                			metadataJSON.put("title", title);
+                		}
+            		}
+            		
+            		
+            	}else if(line.contains("(source /")) {
+            		String[] sourceTokens = line.trim().split(" ");
+            		
+            		if(sourceTokens.length>1) {
+            			String source = sourceTokens[1].replace("\"", "").replace(")","");
+            			metadataJSON.put("source", source);
+            		}
+            		
             	}
             	
             	if(insideComponentDescription) {
@@ -119,7 +172,7 @@ public class KicadNetParser {
             			String csvLine = kicadComponent.getCSVLine();
             			
             			if(!csvLine.equals(",,,,,,,,")){
-            				if(!kicadComponent.getJlcpcbPart().equals("")) {
+            				if(!kicadComponent.getJlcpcbPart().equals("") && kicadComponent.getJlcpcbPart().startsWith("C")) {
             					if(valueComponentIndex.containsKey(kicadComponent.getJlcpcbPart())) {
                 					existingKicadComponent = (KicadComponent)valueComponentIndex.get(kicadComponent.getJlcpcbPart());
                 					existingKicadComponent.addReference(kicadComponent.getReference());
@@ -131,6 +184,7 @@ public class KicadNetParser {
     		                    	valueComponentIndex.put(kicadComponent.getJlcpcbPart(),kicadComponent);
     		                    }
             				}else {
+            					System.out.println("No JLCPCBPart line=" + line);
             					noJLCPCBomponentIndex.put(kicadComponent.getReference(),kicadComponent);
             				}
 	            			kicadComponentArray.add(new AbstractMap.SimpleEntry<KicadComponent, String>(kicadComponent, kicadComponent.getReference()));
@@ -202,21 +256,26 @@ public class KicadNetParser {
                 			insideSpecificNet=true;
                 			int lineLength= line.length();
                 			 labelName = line.substring(line.indexOf("(name")+6, lineLength-1);
-                			
+                			 System.out.println("line 208 labelname=" + labelName);
                 		}else if(insideSpecificNet) {
                 			if(!mcuComponentReference.equals(NO_MCU_TEXT) && line.contains("(ref "+ mcuComponentReference)) {
                 				int pinPos = line.indexOf("(pin");
                 				
                 				String potLine = line.substring(pinPos+5, line.length()).replace("))", "");
-                				if(potLine.contains(")"))potLine = potLine.replace(")", "");
-                				 pinNumber = Integer.parseInt(potLine);
+                				if(!potLine.contains("_")) {
+                					if(potLine.contains(")"))potLine = potLine.replace(")", "");
+                   				 	pinNumber = Integer.parseInt(potLine);
+                   				
+                   				 	pinIndex.add(new AbstractMap.SimpleEntry<String, Integer>(labelName, pinNumber));
+	           						Collections.sort(pinIndex, new Comparator<Map.Entry<?, Integer>>(){
+	           							public int compare(Map.Entry<?, Integer> o1, Map.Entry<?, Integer> o2) {
+	           								return o1.getValue().compareTo(o2.getValue());
+	           							}});
+	           						
+                				}else {
+                					System.out.println("Skipping " + potLine);
+                				}
                 				
-                				pinIndex.add(new AbstractMap.SimpleEntry<String, Integer>(labelName, pinNumber));
-        						Collections.sort(pinIndex, new Comparator<Map.Entry<?, Integer>>(){
-        							public int compare(Map.Entry<?, Integer> o1, Map.Entry<?, Integer> o2) {
-        								return o1.getValue().compareTo(o2.getValue());
-        							}});
-        						
                 			}
                 			if(line.contains(")))")){
                 				insideSpecificNet=false;
@@ -301,13 +360,21 @@ public class KicadNetParser {
             	totalCost += existingKicadComponent.getTotalCostPerPart();
             }
             FileUtils.writeLines(new File(componentTypeReportFileName), componentLines); 
+            System.out.println("pinIndex length=" + pinIndex.size());
             if(!mcuComponentReference.equals(NO_MCU_TEXT)) {
             	ArrayList<String> lines = new ArrayList();
                 for (Map.Entry<String, Integer> entry : pinIndex) {
     				labelName = (String)entry.getKey();
     				pinNumber = entry.getValue();
+    				 System.out.println("pinNumber=" + pinNumber + " labelName=" + labelName);
     				if(modelName.contains("ATmega2560")) {
     					Pin pin = megaPinout.pinIndex.get(""+pinNumber);
+    					if(pin!=null && !labelName.contains("Net-(" + mcuComponentReference)) {
+    						 line = "#define " + labelName +  " " + pin.arduinoPinType+pin.arduinoPinNumber;
+    						 lines.add(line);
+    					}
+    				}else if(modelName.contains("ESP32-WROOM-32D")) {
+    					Pin pin = esp32WROOM32Pinout.pinIndex.get(""+pinNumber);
     					if(pin!=null && !labelName.contains("Net-(" + mcuComponentReference)) {
     						 line = "#define " + labelName +  " " + pin.arduinoPinType+pin.arduinoPinNumber;
     						 lines.add(line);
@@ -326,6 +393,15 @@ public class KicadNetParser {
         {
             e.printStackTrace();
         }
+        
+        try {
+			FileUtils.writeStringToFile(new File(metadataFileName), metadataJSON.toString());
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+        
+        
         
         ArrayList<String> analysisLines = new ArrayList();
         
@@ -368,11 +444,12 @@ public class KicadNetParser {
         
         
         Enumeration en2 = noJLCPCBomponentIndex.keys();
-       // System.out.println("Components without JLCPCB code:");
+        System.out.println("line 371 Components without JLCPCB code:");
+        analysisLines.add("Components without JLCPCB code:" );
         while( en2.hasMoreElements()) {
         	String k = (String) en2.nextElement();
         	kicadComponent = (KicadComponent) noJLCPCBomponentIndex.get(k);
-        	//System.out.println("ref:" + kicadComponent.getReference());;
+        	System.out.println("ref:" + kicadComponent.getReference());;
         	 analysisLines.add(kicadComponent.getReference());
         }
         

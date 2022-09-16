@@ -30,7 +30,7 @@ import com.monitorjbl.xlsx.StreamingReader;
 public class UpdateJLCPCBDatabase {
 
 	static String fileAddress="https://jlcpcb.com/componentSearch/uploadComponentInfo";
-	static String destination = "/Users/arifainchtein/Data/digitalstables/mcu/kicad_designs/JLCPCBDatabase.xls";
+	static String destination = "/home/ari/Data/DigitalStables/mcu/kicad_designs/JLCPCBDatabase.xls";
 
 	public UpdateJLCPCBDatabase() {
 	}

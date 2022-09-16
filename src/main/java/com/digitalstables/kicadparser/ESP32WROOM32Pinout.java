@@ -13,18 +13,18 @@ import java.util.Map;
 
 
 
-public class MegaPinout {
+public class ESP32WROOM32Pinout {
 	public Hashtable<String, Pin> pinIndex = new Hashtable();
 
 	
-	public MegaPinout() {
+	public ESP32WROOM32Pinout() {
 		String line, pinName;
 		int pinNumber;
 		 String arduinoPinType = null;
 		 String arduinPinFunction="";
 		 int arduinoPinNumber=0;
 		Pin pin;
-		String fileToRead = "/home/ari/Data/DigitalStables/mcu/Mega2560Pinout.txt"; //args[0];
+		String fileToRead = "/home/ari/Data/DigitalStables/mcu/ESP32WROOM32.txt"; //args[0];
 		try (BufferedReader br = new BufferedReader(new FileReader(fileToRead))) {
 			while ((line = br.readLine()) != null){
 				String[] tokens = line.split("\t");
